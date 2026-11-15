@@ -52,7 +52,6 @@
         document.getElementById('form-inventario').addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            // Recopilar datos del formulario
             const producto = {
                 id: document.getElementById('id').value,
                 nombre: document.getElementById('nombre').value,
@@ -62,44 +61,62 @@
                 fecha_venta: document.getElementById('fecha_venta').value
             };
 
-            // Enviar datos al backend de Python
-            const response = await fetch('/api/productos', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(producto)
-            });
+            try {
+                const response = await fetch('/api/productos', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(producto)
+                });
 
-            const data = await response.json();
+                if (!response.ok) {
+                    alert('Error al guardar (código ' + response.status + ').');
+                    return;
+                }
 
-            // REQUERIMIENTO: Informar si se agotó (la lógica vino desde Python)
-            if (data.producto.agotado) {
-                alert(`¡Alerta! El producto "${data.producto.nombre}" se registró con cantidad 0 (AGOTADO).`);
+                const data = await response.json();
+
+                if (data.producto.agotado) {
+                    alert('¡Alerta! El producto "' + data.producto.nombre + '" se registró con cantidad 0 (AGOTADO).');
+                }
+
+                await cargarInventario();
+                e.target.reset();
+            } catch (error) {
+                alert('No se pudo conectar con el servidor.');
+                console.error(error);
             }
-
-            cargarInventario();
-            e.target.reset();
         });
 
         async function cargarInventario() {
-            // Solicitar datos al backend de Python
-            const response = await fetch('/api/productos');
-            const productos = await response.json();
+            try {
+                const response = await fetch('/api/productos');
+                const productos = await response.json();
 
-            const tbody = document.getElementById('tabla-body');
-            tbody.innerHTML = '';
+                const tbody = document.getElementById('tabla-body');
+                tbody.innerHTML = '';
 
-            // Dibujar las filas
-            productos.forEach(p => {
-                const tr = document.createElement('tr');
-                if (p.agotado) tr.classList.add('agotado'); // Pinta la fila de rojo
+                productos.forEach(p => {
+                    const tr = document.createElement('tr');
+                    if (p.agotado) tr.classList.add('agotado');
 
-                tr.innerHTML = `
-                    <td>${p.id}</td>
-                    <td>${p.nombre}</td>
-                    <td>${p.cantidad}</td>
-                    <td>$${p.precio_base.toFixed(2)}</td>
-                    <td>$${p.iva.toFixed(2)}</td>
-                    <td><strong>$${p.precio_total.toFixed(2)}</strong></td>
-                    <td>${p.fecha_compra}</td>
-                    <td>${p.fecha_venta}</td>
-                    <td>${p.agotado ? '¡AGOTADO!' : 'En
+                    tr.innerHTML =
+                        '<td>' + p.id + '</td>' +
+                        '<td>' + p.nombre + '</td>' +
+                        '<td>' + p.cantidad + '</td>' +
+                        '<td>$' + p.precio_base.toFixed(2) + '</td>' +
+                        '<td>$' + p.iva.toFixed(2) + '</td>' +
+                        '<td><strong>$' + p.precio_total.toFixed(2) + '</strong></td>' +
+                        '<td>' + p.fecha_compra + '</td>' +
+                        '<td>' + p.fecha_venta + '</td>' +
+                        '<td>' + (p.agotado ? '¡AGOTADO!' : 'En stock') + '</td>';
+                    tbody.appendChild(tr);
+                });
+            } catch (error) {
+                console.error('Error cargando inventario:', error);
+            }
+        }
+
+        cargarInventario();
+    </script>
+</body>
+</html>
