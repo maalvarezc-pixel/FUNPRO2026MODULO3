@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventario Ferretería</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f9; }
+        .container { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; }
+        input { width: 100%; padding: 8px; box-sizing: border-box; }
+        button { background-color: #28a745; color: white; padding: 10px 15px; border: none; cursor: pointer; border-radius: 4px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background-color: #007bff; color: white; }
+        .agotado { background-color: #ffcccc; color: #900; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Ingresar Nuevo Producto al Almacén</h2>
+        <form id="form-inventario">
+            <div class="form-group"><label>ID:</label><input type="text" id="id" required></div>
+            <div class="form-group"><label>Nombre:</label><input type="text" id="nombre" required></div>
+            <div class="form-group"><label>Cantidad:</label><input type="number" id="cantidad" required min="0"></div>
+            <div class="form-group"><label>Precio Base:</label><input type="number" id="precio" step="0.01" required min="0"></div>
+            <div class="form-group"><label>Fecha de Compra:</label><input type="date" id="fecha_compra" required></div>
+            <div class="form-group"><label>Fecha de Venta Estimada:</label><input type="date" id="fecha_venta" required></div>
+            <button type="submit">Guardar Producto</button>
+        </form>
+    </div>
+    
+    <div class="container">
+        <h2>Visualización de Datos en Filas</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th><th>Nombre</th><th>Cantidad</th><th>Precio Base</th>
+                    <th>IVA</th><th>Precio Total</th><th>Fecha Compra</th><th>Fecha Venta</th><th>Estado</th>
+                </tr>
+            </thead>
+            <tbody id="tabla-body"></tbody>
+        </table>
+    </div>
+
+    <script>
+        document.getElementById('form-inventario').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // Recopilar datos del formulario
+            const producto = {
+                id: document.getElementById('id').value,
+                nombre: document.getElementById('nombre').value,
+                cantidad: document.getElementById('cantidad').value,
+                precio: document.getElementById('precio').value,
+                fecha_compra: document.getElementById('fecha_compra').value,
+                fecha_venta: document.getElementById('fecha_venta').value
+            };
+
+            // Enviar datos al backend de Python
+            const response = await fetch('/api/productos', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(producto)
+            });
+
+            const data = await response.json();
+            
+            // REQUERIMIENTO: Informar si se agotó (la lógica vino desde Python)
+            if(data.producto.agotado) {
+                alert(`¡Alerta! El producto "${data.producto.nombre}" se registró con cantidad 0 (AGOTADO).`);
+            }
+
+            cargarInventario();
+            e.target.reset();
+        });
+
+        async function cargarInventario() {
+            // Solicitar datos al backend de Python
+            const response = await fetch('/api/productos');
+            const productos = await response.json();
+            
+            const tbody = document.getElementById('tabla-body');
+            tbody.innerHTML = '';
+            
+            // Dibujar las filas
+            productos.forEach(p => {
+                const tr = document.createElement('tr');
+                if(p.agotado) tr.classList.add('agotado'); // Pinta la fila de rojo
+                
+                tr.innerHTML = `
+                    <td>${p.id}</td>
+                    <td>${p.nombre}</td>
+                    <td>${p.cantidad}</td>
+                    <td>$${p.precio_base.toFixed(2)}</td>
+                    <td>$${p.iva.toFixed(2)}</td>
+                    <td><strong>$${p.precio_total.toFixed(2)}</strong></td>
+                    <td>${p.fecha_compra}</td>
+                    <td>${p.fecha_venta}</td>
+                    <td>${p.agotado ? '¡AGOTADO!' : 'En stock'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+        
+        cargarInventario(); // Cargar la tabla al iniciar
+    </script>
+</body>
+</html>

@@ -1,0 +1,1 @@
+cat /proc/interrupts | head -n 20
